@@ -32,7 +32,7 @@ bump type:
 # Builds the image
 [group("Dev")]
 build-image tag="latest":
-    podman build -t {{ project_name }}:latest -f Containerfile .
+    podman build -t {{ project_name }}:{{ tag }} -f Containerfile .
 
 # Runs the container
 [group("Testing")]
@@ -44,3 +44,7 @@ test-container: (build-image "latest")
         -v ./.env:/opt/app-root/src/.env \
         -it {{ project_name }}:latest 
 
+[group("Deploy")]
+push-image: (build-image default_version)
+    - podman push {{ project_name }}:{{ default_version }} quay.io/rh_ee_taagarwa/demo_mlflow_agent_tracing:{{ default_version }}
+    - podman push {{ project_name }}:{{ default_version }} quay.io/rh_ee_taagarwa/demo_mlflow_agent_tracing:latest
