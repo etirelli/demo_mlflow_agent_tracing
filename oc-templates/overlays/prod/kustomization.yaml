@@ -1,0 +1,14 @@
+---
+kind: Kustomization
+apiVersion: kustomize.config.k8s.io/v1beta1
+
+namespace: ""
+
+resources:
+  - ./../../base
+
+patches:
+  - path: add-secret-values.patch.yaml
+    target:
+      kind: Secret
+      name: demo-mlflow-agent-tracing-secret

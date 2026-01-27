@@ -28,4 +28,4 @@ RUN uv sync --no-editable --no-dev
 
 EXPOSE 8000
 
-CMD [ "uv", "run", "chainlit", "run", "src/demo_mlflow_agent_tracing/app.py", "--host", "0.0.0.0", "--port", "8000" ]
+CMD [ "uv", "run", "--no-sync", "chainlit", "run", "src/demo_mlflow_agent_tracing/app.py", "--host", "0.0.0.0", "--port", "8000" ]

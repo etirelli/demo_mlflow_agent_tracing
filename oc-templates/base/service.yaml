@@ -1,0 +1,14 @@
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: "demo-mlflow-agent-tracing-service"
+  annotations:
+    service.beta.openshift.io/serving-cert-secret-name: "demo-mlflow-agent-tracing-tls"
+spec:
+  selector:
+    app: "demo-mlflow-agent-tracing"
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
