@@ -15,8 +15,7 @@ It has several features that can be used to test out the various functionalities
 ## Architecture
 
 ```mermaid
-graph LR
-    
+graph TD
     subgraph Openshift
         direction TB
         A[MLFlow Server]
@@ -29,8 +28,11 @@ graph LR
             C <--> B
             B <--> F
             F <--> G
+            H[Evals]
         end
         B -- traces --> A
+        A -- traces --> H
+        H -- scores --> A
     end
     subgraph User's Machine
         D(Chrome) <--> C
@@ -79,6 +81,8 @@ TODO
 
 ## Usage
 
+### Chat
+
 You can chat with the agent using the available chainlit interface.
 If you want to start a new conversation, click the pencil and paper icon in the top left corner.
 
@@ -92,3 +96,15 @@ The agent has three tools available to it.
 3. `search_wiki_pages` (WIP): Semantically searches wiki pages for a given query.
     - "What is aurora borealis?"
     - "Find me an article about telephones"
+
+### Review Traces
+
+You can review traces by accessing your experiment through the MLFlow UI.
+
+TODO
+
+### Evaluate
+
+You can evaluate your MLFlow traces using the available evals script.
+
+TODO
