@@ -10,6 +10,7 @@ from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from demo_mlflow_agent_tracing.base import ContextSchema
 from demo_mlflow_agent_tracing.chat_model import get_chat_model
 from demo_mlflow_agent_tracing.constants import CHECKPOINTER_PATH, DIRECTORY_PATH
+from demo_mlflow_agent_tracing.settings import Settings
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,7 @@ async def get_checkpointer_conn():
 async def build_agent():
     """Build the agent."""
     # Construct the agent
+    settings = Settings()
     llm = get_chat_model()
     llm.temperature = 0.0
     mcp_client = MultiServerMCPClient(
@@ -38,6 +40,12 @@ async def build_agent():
                 "transport": "stdio",
                 "command": "python",
                 "args": [str(DIRECTORY_PATH / "src" / "demo_mlflow_agent_tracing" / "mcp_server.py")],
+                "env": {
+                    "OPENAI_API_KEY": settings.OPENAI_API_KEY.get_secret_value(),
+                    "OPENAI_MODEL_NAME": settings.OPENAI_MODEL_NAME,
+                    "OPENAI_BASE_URL": settings.OPENAI_BASE_URL,
+                    "CHAINLIT_AUTH_SECRET": settings.CHAINLIT_AUTH_SECRET.get_secret_value(),
+                },
             }
         }
     )

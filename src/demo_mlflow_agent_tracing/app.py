@@ -14,11 +14,17 @@ from demo_mlflow_agent_tracing.agent import build_agent
 from demo_mlflow_agent_tracing.base import ContextSchema
 from demo_mlflow_agent_tracing.settings import Settings
 
+# Validate settings
 settings = Settings()
 
+# Start logger
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(name)s - %(message)s")
 
+# Log settings
+logger.info(f"Settings loaded: {settings}")
+
+# Start MLFlow Autolog
 mlflow.langchain.autolog()
 
 
