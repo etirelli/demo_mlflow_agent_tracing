@@ -4,6 +4,7 @@
 
 !.chainlit
 !db/.gitkeep
+!db/chroma.sqlite3
 !public
 !scripts
 !tests

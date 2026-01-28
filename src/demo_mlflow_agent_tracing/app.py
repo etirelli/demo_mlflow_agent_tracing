@@ -43,19 +43,19 @@ async def set_starters():
     """Set conversation starters."""
     return [
         cl.Starter(
-            label="Create",
-            message="Please create an article about aurora borealis.",
+            label="Ask",
+            message="How are otters playful animals?",
             icon="/public/sparkle.svg",
-        ),
-        cl.Starter(
-            label="List",
-            message="List all available articles.",
-            icon="/public/list-bullet.svg",
         ),
         cl.Starter(
             label="Search",
             message="Find me articles about animals.",
             icon="/public/magnifying-glass.svg",
+        ),
+        cl.Starter(
+            label="Irrelevant",
+            message="What is the airspeed velocity of an unladen swallow?",
+            icon="/public/x-circle.svg",
         ),
     ]
 

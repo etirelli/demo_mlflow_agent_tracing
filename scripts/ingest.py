@@ -1,41 +1,37 @@
-from demo_mlflow_agent_tracing.constants import WIKI_PATH, DB_PATH
-from langchain_text_splitters import MarkdownHeaderTextSplitter
-import frontmatter
-from langchain_chroma import Chroma
+import logging
 
-def ingest():
-    
-    # Load all pages as documents
-    paths = WIKI_PATH.glob("*.md")
-    docs = []
-    for path in paths:
-        # Get the file content and metadata
-        content = path.read_text()
-        metadata = frontmatter.loads(content)
-        metadata["path"] = path.as_posix()
-        metadata["filename"] = path.name
-        
-        # Chunk each document
-        headers_to_split_on = [
-            ("#", "Header 1"),
-            ("##", "Header 2"),
-            ("###", "Header 3"),
-        ]
-        splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on, strip_headers=True)
-        chunks = splitter.split_text(content)
-        
-        # Update the metadata of each chunk
-        for chunk in chunks:
-            chunk.metadata = chunk.metadata | metadata
-        
-        docs.extend(chunks)
-        
-    # Save the chunks to a new chroma collection
-    db = Chroma(persist_directory=DB_PATH)
+from datasets import load_dataset
+from demo_mlflow_agent_tracing.db import get_db
+from langchain_core.documents import Document
+from tqdm import tqdm
+
+logger = logging.getLogger(__name__)
+
+
+def main():
+    """Run ingestion."""
+    # Load the text corpus
+    dataset = "rag-datasets/rag-mini-wikipedia"
+    corpus = load_dataset(dataset, "text-corpus")["passages"]
+    logger.info(f"Read {corpus.num_rows} texts from {dataset}")
+
+    # Set up Chroma DB
+    db = get_db()
     db.reset_collection()
-    db.add_documents(documents=docs)
-        
-    return docs
+
+    # Load all texts as documents
+    for row in tqdm(corpus, desc="Embedding documents..."):
+        # Get the file content and id
+        content = row["passage"]
+        row_id = row["id"]
+
+        # Create a document
+        document = Document(page_content=content, metadata={"row_id": row_id, "dataset": dataset})
+
+        # Save the document to chroma
+        db.add_documents(documents=[document])
+
 
 if __name__ == "__main__":
-    ingest()
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(name)s - %(message)s")
+    main()
