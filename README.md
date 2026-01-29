@@ -18,18 +18,18 @@ It has several features that can be used to test out the various functionalities
 graph TD
     subgraph Openshift
         direction TB
-        A[MLFlow Server]
         subgraph E ["Agent (this repo)"]
             direction TB
             C[Chainlit Frontend]
             B[Langgraph Backend]
-            F["MCP Server (stdio)"]
+            F[MCP Server]
             G[Knowledge Base]
             C <--> B
-            B <--> F
-            F <--> G
+            B <-- stdio --> F
+            F <-- vector search --> G
             H[Evals]
         end
+        A[MLFlow Server]
         B -- traces --> A
         A -- traces --> H
         H -- scores --> A
@@ -61,13 +61,19 @@ cp .env.example .env
 uv venv && uv sync
 ```
 
-3. In one terminal, start up the MLFlow server:
+4. Ingest the vector database using the available script:
+
+```sh
+uv run scripts/ingest.py
+```
+
+5. In one terminal, start up the MLFlow server:
 
 ```sh
 uv run mlflow server
 ```
 
-4. In another terminal, start up the application:
+6. In another terminal, start up the application:
 
 ```sh
 uv run chainlit run src/demo_mlflow_agent_tracing/app.py
@@ -86,18 +92,13 @@ TODO
 You can chat with the agent using the available chainlit interface.
 If you want to start a new conversation, click the pencil and paper icon in the top left corner.
 
-The agent has three tools available to it.
+The agent has one tool available to it.
 
-1. `create_new_wiki_page`: Takes a topic and generates a wiki page about the topic in the `wiki` folder.
-    - "Write me a wiki page about Aurora Borealis"
-    - "Make me an article about the invention of the telephone."
-2. `list_wiki_pages`: Lists available wiki pages.
-    - "List all wiki pages"
-3. `search_wiki_pages` (WIP): Semantically searches wiki pages for a given query.
-    - "What is aurora borealis?"
-    - "Find me an article about telephones"
+1. `search`: Search the knowledge base for answers to your questions.
 
 ### Review Traces
+
+Any conversation you have with the agent is automatically traced and exported to MLFlow.
 
 You can review traces by accessing your experiment through the MLFlow UI.
 
@@ -106,5 +107,9 @@ TODO
 ### Evaluate
 
 You can evaluate your MLFlow traces using the available evals script.
+
+TODO
+
+### LLM Judge
 
 TODO
