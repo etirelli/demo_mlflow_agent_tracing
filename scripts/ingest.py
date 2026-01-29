@@ -1,6 +1,7 @@
 import logging
 
 from datasets import load_dataset
+from demo_mlflow_agent_tracing.constants import DB_PATH
 from demo_mlflow_agent_tracing.db import get_db
 from langchain_core.documents import Document
 from tqdm import tqdm
@@ -10,6 +11,13 @@ logger = logging.getLogger(__name__)
 
 def main():
     """Run ingestion."""
+    # Check if the Chroma store exists already
+    if (DB_PATH / "chroma.sqlite3").exists():
+        logger.info("Chroma store already exists, skipping creation.")
+        return
+
+    logger.info("Chroma store does not exist, creating...")
+
     # Load the text corpus
     dataset = "rag-datasets/rag-mini-wikipedia"
     corpus = load_dataset(dataset, "text-corpus")["passages"]
