@@ -1,26 +1,30 @@
-from pathlib import Path
-
+import mlflow
 from demo_mlflow_agent_tracing.constants import DIRECTORY_PATH
 from demo_mlflow_agent_tracing.settings import Settings
+from mlflow.genai.datasets import create_dataset, get_dataset, set_dataset_tags
 from openai import OpenAI
 from pydantic import BaseModel
 
 
 class QuestionAnswerPair(BaseModel):
+    """Represent a QnA pair."""
+
     index: int
     question: str
     answer: str
 
 
 class QuestionAnswerPairs(BaseModel):
+    """Request output format."""
+
     pairs: list[QuestionAnswerPair]
 
 
-class GenerationResult(BaseModel):
-    file: Path
-    index: int
-    question: str
-    answer: str
+class MLFlowEvalData(BaseModel):
+    """MLFlow eval data structure."""
+
+    inputs: dict[str, str]
+    expectations: dict[str, str]
 
 
 PROMPT_TEMPLATE = """
@@ -51,11 +55,10 @@ Please provide your {num_pairs} question and answer pairs about this document. P
 """.strip()
 
 
-def sanitize_result(result: GenerationResult):
+def sanitize_string(s: str) -> str:
     """Sanitize the results of the generation process."""
-    sanitized = result
-    sanitized.question = sanitized.question.replace("‑", "-").replace("’", "'").replace(" ", " ")
-    sanitized.answer = sanitized.answer.replace("‑", "-").replace("’", "'").replace(" ", " ")
+    sanitized = s
+    sanitized = sanitized.replace("‑", "-").replace("’", "'").replace(" ", " ")
     return sanitized
 
 
@@ -75,7 +78,7 @@ def main():
 
     # Generate QnA pairs
     num_pairs = 5
-    generation_results: list[GenerationResult] = []
+    records: list[MLFlowEvalData] = []
     for path in paths:
         # Prepare system prompt
         document = path.read_text()
@@ -90,17 +93,23 @@ def main():
         )
         qna_pairs = response.choices[0].message.parsed
 
-        # Save generation result
-        results = [
-            GenerationResult(question=pair.question, answer=pair.answer, file=path.name, index=i+1) for i, pair in enumerate(qna_pairs.pairs)
-        ]
-        results = [sanitize_result(result=result) for result in results]
-        generation_results.extend(results)
+        # Save generation result in MLFlow format
+        for pair in qna_pairs.pairs:
+            inputs = {"question": sanitize_string(pair.question)}
+            expectations = {"expected_response": sanitize_string(pair.answer), "expected_document": path.name}
+            record = MLFlowEvalData(inputs=inputs, expectations=expectations)
+            records.append(record.model_dump())
 
-    # Save pairs to a jsonl file
-    with open(path.parent / f"qna_pairs.jsonl", "w") as f:
-        for generation_result in generation_results:
-            f.write(generation_result.model_dump_json() + "\n")
+    # Save pairs to MLFlow
+    if settings.MLFLOW_TRACKING_URI is not None:
+        mlflow.set_tracking_uri(settings.MLFLOW_TRACKING_URI)
+    if settings.MLFLOW_EXPERIMENT_NAME is not None:
+        mlflow.set_experiment(settings.MLFLOW_EXPERIMENT_NAME)
+    dataset = create_dataset(
+        name="oscorp_policies_validation_set",
+        tags={"stage": "validation", "environment": "dev", "model": model, "version": "0.1.0"},
+    )
+    dataset.merge_records(records=records)
 
 
 if __name__ == "__main__":
