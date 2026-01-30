@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     # MLFlow
     MLFLOW_TRACKING_URI: Optional[str] = Field(None, description="MLFlow Tracking URI")
     MLFLOW_EXPERIMENT_NAME: Optional[str] = Field(None, description="MLFlow Experiment Name")
-    MFLOW_ACTIVE_MODEL_ID: Optional[str] = Field("database_agent_demo", description="MLFlow Experiment Name")
+    MLFLOW_SYSTEM_PROMPT_URI: Optional[str] = Field(None, description="MLFlow Prompt URI (e.g. prompts:/my-prompt@latest)")
 
     @property
     def openai_enabled(self) -> bool:

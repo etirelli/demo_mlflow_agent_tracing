@@ -3,6 +3,7 @@
 import logging
 
 import aiosqlite
+import mlflow
 from langchain.agents import create_agent
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
@@ -34,8 +35,12 @@ async def build_agent():
     """Build the agent."""
     # Construct the agent
     settings = Settings()
+
+    # Get the chat model
     llm = get_chat_model()
     llm.temperature = 0.0
+
+    # Get tools from MCP server
     mcp_client = MultiServerMCPClient(
         {
             "content_writer": {
@@ -56,12 +61,22 @@ async def build_agent():
         }
     )
     tools = await mcp_client.get_tools()
+
+    # Load system prompt from MLFlow if requested
+    if settings.MLFLOW_SYSTEM_PROMPT_URI is not None:
+        logger.info(f"Loading prompt from MLFlow: {settings.MLFLOW_SYSTEM_PROMPT_URI}")
+        system_prompt = mlflow.genai.load_prompt(settings.MLFLOW_SYSTEM_PROMPT_URI).format()
+    else:
+        logger.info("No system prompt specified. Using default system prompt.")
+        system_prompt = SYSTEM_PROMPT
+
+    # Create agent
     conn = await get_checkpointer_conn()
     checkpointer = AsyncSqliteSaver(conn=conn)
     agent = create_agent(
         model=llm,
         tools=tools,
-        system_prompt=SYSTEM_PROMPT,
+        system_prompt=system_prompt,
         context_schema=ContextSchema,
         checkpointer=checkpointer,
     )
