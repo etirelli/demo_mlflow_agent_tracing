@@ -81,14 +81,13 @@ def retrieval_score(outputs: dict[str, Any], expectations: dict[str, Any]):
         return Feedback(value="no", rationale=f"There was an error parsing the outputs: {str(e)}", error=e)
 
 
-# @scorer
-# def tool_calling_score(outputs, expectations):
-#     pass
-
-
-# @scorer
-# def num_turns_score(outputs, expectations):
-#     pass
+@scorer(name="MinimalToolCalls")
+def tool_calling_score(outputs: dict[str, Any], expectations: dict[str, Any]):
+    """Check if the query was resolved using only one tool call."""
+    tool_calls = get_tool_calls(outputs=outputs)
+    if len(tool_calls) <= 1:
+        return Feedback(value="yes", rationale="Exactly one tool call was made")
+    return Feedback(value="no", rationale=f"More than one tool call was made. It look {len(tool_calls)} tool calls before the agent responded.")
 
 
 async def run_agent(question: str) -> dict[str, Any]:
@@ -138,12 +137,10 @@ def main():
     model = f"openai:/{settings.OPENAI_MODEL_NAME}"
     scorers = [
         Correctness(model=model),
-        # Guidelines(model=model, name="support_quality", guidelines="Response must be helpful, accurate, and professional"),
         Completeness(name="Completeness", model=model),
         RelevanceToQuery(name="Relevance", model=model),
         retrieval_score,
-        # tool_calling_score,
-        # num_turns_score,
+        tool_calling_score,
     ]
 
     # Run evaluation
