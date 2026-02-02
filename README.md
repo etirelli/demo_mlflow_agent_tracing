@@ -1,6 +1,6 @@
 # Demo MLFlow Agent Tracing
 
-![](./docs/mlflow_dashboard.png)
+![](./docs/inner_outer_loop.png)
 
 ## Overview
 
