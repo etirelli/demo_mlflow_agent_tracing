@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import threading
 from typing import Any
 from uuid import uuid4
 
@@ -18,6 +19,35 @@ from mlflow.genai.scorers import Completeness, Correctness, RelevanceToQuery, sc
 mlflow.langchain.autolog(run_tracer_inline=True)
 
 logger = logging.getLogger(__name__)
+
+# Single long-lived event loop for all predictions (avoids "Event loop is closed" from aiosqlite/etc)
+_EVALS_LOOP: asyncio.AbstractEventLoop | None = None
+_EVALS_LOOP_THREAD: threading.Thread | None = None
+_PREDICT_TIMEOUT = 300  # seconds per prediction
+
+
+def _run_loop(loop: asyncio.AbstractEventLoop) -> None:
+    asyncio.set_event_loop(loop)
+    loop.run_forever()
+
+
+def _get_evals_loop() -> asyncio.AbstractEventLoop:
+    global _EVALS_LOOP, _EVALS_LOOP_THREAD
+    if _EVALS_LOOP is None:
+        _EVALS_LOOP = asyncio.new_event_loop()
+        _EVALS_LOOP_THREAD = threading.Thread(target=_run_loop, args=(_EVALS_LOOP,), daemon=True)
+        _EVALS_LOOP_THREAD.start()
+    return _EVALS_LOOP
+
+
+def _stop_evals_loop() -> None:
+    global _EVALS_LOOP, _EVALS_LOOP_THREAD
+    if _EVALS_LOOP is not None:
+        _EVALS_LOOP.call_soon_threadsafe(_EVALS_LOOP.stop)
+        if _EVALS_LOOP_THREAD is not None:
+            _EVALS_LOOP_THREAD.join(timeout=10)
+        _EVALS_LOOP = None
+        _EVALS_LOOP_THREAD = None
 
 
 def get_messages(outputs: dict[str, Any]) -> list[BaseMessage]:
@@ -111,9 +141,10 @@ async def run_agent(question: str) -> dict[str, Any]:
 
 
 def predict(question: str):
-    """Get a prediction from the agent."""
-    result = asyncio.run(run_agent(question=question))
-    return result
+    """Get a prediction from the agent (runs on shared event loop to avoid 'Event loop is closed')."""
+    loop = _get_evals_loop()
+    future = asyncio.run_coroutine_threadsafe(run_agent(question=question), loop)
+    return future.result(timeout=_PREDICT_TIMEOUT)
 
 
 def main():
@@ -152,14 +183,15 @@ def main():
         tool_calling_score,
     ]
 
-    # Run evaluation
-    results = evaluate(data=dataset, scorers=scorers, predict_fn=predict)
+    # Bootstrap shared event loop so all predict() calls use it (avoids "Event loop is closed")
+    _get_evals_loop()
 
-    # Print results
-    logger.info("Evaluation results")
-    logger.info(f"{results.metrics}")
-
-    return
+    try:
+        results = evaluate(data=dataset, scorers=scorers, predict_fn=predict)
+        logger.info("Evaluation results")
+        logger.info(f"{results.metrics}")
+    finally:
+        _stop_evals_loop()
 
 
 if __name__ == "__main__":
