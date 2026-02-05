@@ -21,13 +21,12 @@ mlflow.langchain.autolog(run_tracer_inline=True)
 logger = logging.getLogger(__name__)
 
 
-
 def parse_args() -> argparse.Namespace:
+    """Parse cli arguments."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--run-name", type=str, required=False, default=None)
     args = parser.parse_args()
     return args
-
 
 
 def get_messages(outputs: dict[str, Any]) -> list[BaseMessage]:

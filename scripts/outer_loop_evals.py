@@ -1,17 +1,16 @@
 import logging
 import os
-from typing import Any, Literal
+from typing import Literal
 
 import mlflow
-from demo_mlflow_agent_tracing.mcp_server import SearchResult
 from demo_mlflow_agent_tracing.settings import Settings
 from dotenv import load_dotenv
 from mlflow import MlflowClient
-from mlflow.genai.judges import make_judge
-from mlflow.entities import Feedback
 from mlflow.genai import evaluate
+from mlflow.genai.judges import make_judge
 
 logger = logging.getLogger(__name__)
+
 
 def main() -> None:
     """Search production traces and run GenAI evaluation on them."""
@@ -30,9 +29,7 @@ def main() -> None:
     exp_name = settings.MLFLOW_EXPERIMENT_NAME or "Default"
     experiment = client.get_experiment_by_name(exp_name)
     if not experiment:
-        raise SystemExit(
-            f"Experiment '{exp_name}' not found. Create it or set MLFLOW_EXPERIMENT_NAME."
-        )
+        raise SystemExit(f"Experiment '{exp_name}' not found. Create it or set MLFLOW_EXPERIMENT_NAME.")
     experiment_id = experiment.experiment_id
 
     max_traces = 5
@@ -56,27 +53,27 @@ def main() -> None:
         model = f"openai:/{settings.OPENAI_MODEL_NAME}"
     else:
         model = f"vertex_ai:/{settings.VERTEX_MODEL_NAME}"
-    
+
     # LLM as a judge
     grounded_judge = make_judge(
-    name="groundedness",
-    instructions=(
-        "Verify the outputs are grounded in the context provided in the inputs and intermediate context from tool calls. {{ trace }}\n"
-        "Rate: 'fully', 'partially', or 'not' grounded."
-    ),
-    feedback_value_type=Literal["fully", "partially", "not"],
-    model=model,
+        name="groundedness",
+        instructions=(
+            "Verify the outputs are grounded in the context provided in the inputs and intermediate context from tool calls. {{ trace }}\n"
+            "Rate: 'fully', 'partially', or 'not' grounded."
+        ),
+        feedback_value_type=Literal["fully", "partially", "not"],
+        model=model,
     )
 
     completeness_judge = make_judge(
-    name="completeness",
-    instructions=(
-        "Ensure the outputs completely address all the questions from the inputs.\n"
-        "Inputs: {{ inputs }} \n Outputs: {{ outputs }} \n"
-        "Rate as 'complete' or 'incomplete'."
-    ),
-    feedback_value_type=Literal["complete", "incomplete"],
-    model=model,
+        name="completeness",
+        instructions=(
+            "Ensure the outputs completely address all the questions from the inputs.\n"
+            "Inputs: {{ inputs }} \n Outputs: {{ outputs }} \n"
+            "Rate as 'complete' or 'incomplete'."
+        ),
+        feedback_value_type=Literal["complete", "incomplete"],
+        model=model,
     )
     # Agent as a judge
     error_handling_judge = make_judge(
